@@ -1,8 +1,8 @@
 # Standard libs
-# ...
+import os
 
 # FastAPI libs
-from fastapi import HTTPException, status, Response, Depends
+from fastapi import HTTPException, status, Response, Request, UploadFile
 from fastapi.responses import ORJSONResponse
 
 # SqlAlchemy
@@ -13,6 +13,22 @@ from database import DatabaseConnection, SessionLocal, get_db
 
 
 session = SessionLocal()
+
+IMAGE_DIR = f"{os.getcwd()}/images"
+
+# CORS_HEADERS = {
+#     "Access-Control-Allow-Origin": "*",
+#     "Access-Control-Allow-Credentials": "true"
+# }
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "3600"
+
+}
 
 
 class PostService:
@@ -36,7 +52,22 @@ class PostService:
                                        "fetch all posts!\n"
                                        f"ERR: {err}")
 
-        return p
+        return ORJSONResponse({"all_posts": p},
+                              headers=CORS_HEADERS)
+
+    def upload_post(self, category_name: str, file: UploadFile):
+        print(os.getcwd())
+        contents = file.read()
+        try:
+            with open(f"{IMAGE_DIR}/{category_name}/{file.filename}", "wb") as f:
+                f.write(contents)
+        except Exception as err:
+            print(err)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="Error")
+
+        return ORJSONResponse({"filename": file.filename},
+                              headers=CORS_HEADERS)
 
     def get_post_by_id(self, post_id):
         try:
@@ -59,12 +90,28 @@ class PostService:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                  detail=f"Post with id '{post_id}' was not found!")
 
-        return {"post": post}
+        return ORJSONResponse({"post": post},
+                              headers=CORS_HEADERS)
 
     def create_post(self, new_post: Post):
         try:
-            self.cursor.execute("""INSERT INTO posts (category_name, content, picture) VALUES (%s, %s, %s) RETURNING*""",
-                               (new_post.category_name, new_post.content, new_post.picture))
+            self.cursor.execute("""SELECT picture_name FROM posts""")
+        except Exception as err:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Error occurred while trying to "
+                                       "select all pictures names!\n"
+                                       f"ERR: {err}")
+        try:
+            all_pictures_names = self.cursor.fetchall()
+        except Exception as err:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Error occurred while trying to "
+                                       "fetch all pictures names!\n"
+                                       f"ERR: {err}")
+        # TODO
+        try:
+            self.cursor.execute("""INSERT INTO posts (category_name, content, picture_name) VALUES (%s, %s, %s) RETURNING*""",
+                               (new_post.category_name, new_post.content, new_post.picture_name))
         except Exception as err:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
@@ -85,10 +132,13 @@ class PostService:
                                        "commit changes into database when created new post!\n"
                                        f"ERR: {err}")
 
-        return {"message": "OK",
-                "new_post": new_created_post}
+        return ORJSONResponse({"message": "OK",
+                               "new_post": new_created_post},
+                              headers=CORS_HEADERS)
 
-    def delete_post_by_id(self, post_id: int):
+    def delete_post_by_id(self, post_id: int, request: Request):
+        print(request.headers)
+        print(request.url)
         try:
             self.cursor.execute("""DELETE FROM posts
                                     WHERE post_id=%s RETURNING*""",
@@ -97,14 +147,16 @@ class PostService:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
                                        f"delete post by id '{post_id}'\n"
-                                       f"ERR: {err}")
+                                       f"ERR: {err}",
+                                headers=CORS_HEADERS)
         try:
             deleted_post = self.cursor.fetchone()
         except Exception as err:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
                                        f"fetch deleted post by id '{post_id}'\n"
-                                       f"ERR: {err}")
+                                       f"ERR: {err}",
+                                headers=CORS_HEADERS)
 
         try:
             self.db_connection.commit()
@@ -112,33 +164,34 @@ class PostService:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
                                        f"commit changes when deleted post by id '{post_id}'\n"
-                                       f"ERR: {err}")
+                                       f"ERR: {err}",
+                                headers=CORS_HEADERS)
 
         if deleted_post is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"Post with id '{post_id}' was not found!")
+                                detail=f"Post with id '{post_id}' was not found!",
+                                headers=CORS_HEADERS)
 
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return ORJSONResponse(content={'message': "deletion was successful!"},
+                        headers=CORS_HEADERS)
 
-    def update_post_by_id(self, post_id: int, other_post_data: Post):
+    def get_post_by_category(self, category_name: str):
         try:
-            self.cursor.execute("""UPDATE posts 
-                                    SET title=%s, content=%s 
-                                    WHERE post_id=%s RETURNING*""",
-                                (other_post_data.title, other_post_data.content,
-                                 post_id))
+            self.cursor.execute("""SELECT * FROM posts
+                                    WHERE category_name=%s""",
+                                (category_name,))
         except Exception as err:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
-                                       f"Update post with id '{post_id}'!\n"
+                                       f"Update post with category '{category_name}'!\n"
                                        f"ERR: {err}")
 
         try:
-            updated_post = self.cursor.fetchone()
+            posts = self.cursor.fetchall()
         except Exception as err:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
-                                       f"fetch updated post by id '{post_id}'\n"
+                                       f"fetch get posts by category '{category_name}'\n"
                                        f"ERR: {err}")
 
         try:
@@ -146,14 +199,14 @@ class PostService:
         except Exception as err:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error occurred while trying to "
-                                       f"commit changes when updated post by id '{post_id}'\n"
+                                       f"commit changes when get posts by category '{category_name}'\n"
                                        f"ERR: {err}")
 
-        if updated_post is None:
+        if len(posts) == 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"Post with id '{post_id}' was not found!")
+                                detail=f"Post with category '{category_name}' was not found!")
 
         return ORJSONResponse(content={
-            "message": f"Post with id '{post_id}' successfully updated!",
-            "updated_post": updated_post
-        })
+            "posts": posts
+        }, headers=CORS_HEADERS)
+

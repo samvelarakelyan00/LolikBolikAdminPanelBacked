@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script defer>
+async function uploadFile() {
+    let formData = new FormData();
+    formData.append("file", fileupload.files[0]);
+<!--    formData.append("text", categoryname.text[0])-->
+    await fetch('http://127.0.0.1:8000/posts/uploadpost', {
+      method: "POST",
+      body: formData
+    });
+    alert('The file has been uploaded successfully.');
+}
+</script>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<input id="fileupload" type="file" name="fileupload" />
+<!--<input id="catname" type="text" name="categoryname" />-->
+<button id="upload-button" onclick="uploadFile()"> Upload </button>
+
+</body>
+</html>

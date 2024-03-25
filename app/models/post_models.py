@@ -10,5 +10,5 @@ class Post(Base):
     post_id = Column(Integer, primary_key=True)
     category_name = Column(String, nullable=False)
     content = Column(String, nullable=False, server_default='')
-    picture_path = Column(String, nullable=False, server_default='')
+    picture_name = Column(String, nullable=False, server_default='')
     created_at = Column(DateTime, nullable=False, server_default='now()')
