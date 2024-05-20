@@ -31,11 +31,6 @@ post_service = post_service.PostService()
 
 IMAGE_DIR = "../app/static/images"
 
-# CORS_HEADERS = {
-#     "Access-Control-Allow-Origin": "*",
-#     "Access-Control-Allow-Credentials": "true"
-# }
-
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
@@ -71,10 +66,6 @@ async def get_image(category_name: str, image_name: str):
 def f():
     return post_service.get_all_posts()
 
-
-# @posts_router.post('')
-# def insert_post(new_post: post_schemas.Post):
-#     return post_service.create_post(new_post)
 
 
 @posts_router.get("/{id}")

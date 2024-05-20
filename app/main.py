@@ -32,6 +32,7 @@ app = FastAPI(middleware=[
 
 
 origins = [
+
     "http://localhost.tiangolo.com",
     "https://localhost.tiangolo.com",
     "http://localhost",
@@ -49,12 +50,17 @@ origins = [
 ]
 
 app.add_middleware(
-    CORSMiddleware,
+    # CORSMiddleware,
+    # allow_origins=origins,
+    # allow_credentials=True,
+    # allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    # allow_headers=["Authorization", "Content-Type", "Accept"],
+    # expose_headers=["Content-Disposition"],
+CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
-    expose_headers=["Content-Disposition"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -74,7 +80,7 @@ from services import post_service
 def delete_post_by_id(post_id: int):
     CORS_HEADERS = {
         "Access-Control-Allow-Origin": "*",
-        "Accept-Control-Allow-Origin": "*",
+        "Accept-Control--Allow-Origin": "*",
         "Access-Control-Allow-Methods": "*",
         "Access-Control-Allow-Headers": "*",
         "Access-Control-Allow-Credentials": "true",
@@ -119,5 +125,6 @@ def delete_post_by_id(post_id: int):
 
 app.include_router(posts_api_router)
 
+#
 # if __name__ == "__main__":
 #     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -209,4 +209,3 @@ class PostService:
         return ORJSONResponse(content={
             "posts": posts
         }, headers=CORS_HEADERS)
-
